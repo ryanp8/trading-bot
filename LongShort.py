@@ -115,7 +115,7 @@ class LongShort:
         return long_equity
 
 
-    def run(self, tickers, queue):
+    def run(self, tickers):
         data = yf.download(tickers, start=self.start, end=self.end, interval='1m')['Adj Close']
         data['id'] = range(len(data))
         data.set_index('id', inplace=True)
@@ -147,13 +147,11 @@ class LongShort:
         # print(f'[balance]: {self.balance}')
         # print(f'time to complete: {time.perf_counter() - start}')
         print(f'[balance]: {self.balance}, {self.start}')
-        queue.put(self.balance)
         return self.balance
     
 
-def download_sp(start, end, queue):
+def download_sp(start, end):
     series = yf.download(['SPY'], start=start, end=end, interval='1m')['Adj Close']
-    queue.put([series[0], series[1]])
     return [series[0], series[1]]
         
 
@@ -165,24 +163,14 @@ if __name__ == '__main__':
 
         ls_objs = [LongShort(date[0], date[1]) for date in dates]
 
-        sp_q = multiprocessing.Queue()
-        strat_q = multiprocessing.Queue()
+        with multiprocessing.Pool() as pool:
+            sp_async_res = [pool.apply_async(download_sp, args=(date[0], date[1])) for date in dates]
+            strat_async_res = [pool.apply_async(ls_obj.run, args=(tickers,)) for ls_obj in ls_objs]
+            pool.close()
+            pool.join()
 
-        sp_processes = [multiprocessing.Process(target=download_sp, args=(date[0], date[1], sp_q)) for date in dates]
-        strat_processes = [multiprocessing.Process(target=ls_objs[i].run, args=(tickers, strat_q)) for i, _ in enumerate(dates)]
-
-        processes = sp_processes + strat_processes
-        for process in processes:
-            process.start()
-        
-        for process in processes:
-            process.join()
-
-        sp_q.put(None)
-        strat_q.put(None)
-
-        sp_data = np.array(list(iter(lambda : sp_q.get(timeout=0.00001), None)))
-        strat_data = np.array(list(iter(lambda : strat_q.get(timeout=0.00001), None)))
+        sp_data = np.array([res.get() for res in sp_async_res])
+        strat_data = np.array([res.get() for res in strat_async_res])
 
         # Testing with no multiprocessing (80.1291152080521 sec vs 21.57460333313793 sec)
         # sp_data = np.array([download_sp(date[0], date[1], sp_q) for date in dates], dtype=float)
