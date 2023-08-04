@@ -15,10 +15,6 @@ class LongShort:
         self.price_record = {}
         self.z_scores = {}
 
-        self.ls_backtest_results = []
-        self.sp_backtest_results = []
-
-    
     def add_price(self, symbol, price):
         # track self.sma_len prices 
         if symbol in self.price_record:
