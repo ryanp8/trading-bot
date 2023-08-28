@@ -1,8 +1,8 @@
 # trading-bot
 
-Bot created to learn about more about trading, parallelism, and concurrency.
+Bot created to learn about more about trading, parallelism, and concurrency. 
 
-## Strategy
+### Strategy
 130/30 long-short equity strategy with mean reversion. Ranks stocks in the S&P 500 by how many standard deviations the price is from their previously calculated average and buys/sells accordingly. \
 Some backtesting shows that the strategy performs 2.33% better than the S&P 500, but more testing is needed.
 
